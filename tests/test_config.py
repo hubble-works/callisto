@@ -1,4 +1,3 @@
-import pytest
 from unittest.mock import patch
 from app.config import Settings
 
@@ -7,7 +6,7 @@ def test_settings_default_values():
     """Test that Settings loads with default values when no env vars are set."""
     with patch.dict("os.environ", {}, clear=True):
         settings = Settings(_env_file=None)
-        
+
         assert settings.github_token == ""
         assert settings.github_webhook_secret == ""
         assert settings.ai_api_key == ""
@@ -26,7 +25,7 @@ def test_settings_from_environment_variables():
         "AI_MODEL": "gpt-3.5-turbo",
         "AI_BASE_URL": "https://custom-api.example.com",
         "LOG_LEVEL": "DEBUG",
-        "ENVIRONMENT": "production"
+        "ENVIRONMENT": "production",
     }
 
     with patch.dict("os.environ", env_vars, clear=True):
