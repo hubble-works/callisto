@@ -70,6 +70,10 @@ Set these environment variables in your `.env` file:
 - `GITHUB_WEBHOOK_SECRET`: Secret for validating GitHub webhooks
 - `AI_API_KEY`: API key for your AI service (e.g., OpenAI)
 - `AI_MODEL`: AI model to use (e.g., gpt-4)
+- `AI_BASE_URL`: (Optional) Custom base URL for OpenAI-compatible APIs (e.g., Azure OpenAI, LocalAI, Ollama)
+  - If not set, defaults to OpenAI's official API endpoint
+  - Example for Azure: `https://YOUR-RESOURCE.openai.azure.com/v1`
+  - Example for LocalAI: `http://localhost:8080/v1`
 
 ## Architecture
 

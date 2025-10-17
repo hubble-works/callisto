@@ -7,6 +7,9 @@
   - Analyzes code diffs with AI (see `app/services/ai_service.py`).
   - Posts review comments to GitHub (see `app/services/github_service.py`).
 
+## Specific Instructions
+- Use classes instead of dicts for data models where appropriate.
+
 ## Architecture
 - `app/main.py`: FastAPI app entry point; configures API routes and app startup.
 - `app/api/`: API endpoints, especially `webhooks.py` for GitHub integration.

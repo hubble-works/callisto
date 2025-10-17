@@ -18,7 +18,7 @@ class Settings(BaseSettings):
     # AI Configuration
     ai_api_key: str = ""
     ai_model: str = "gpt-4"
-    ai_base_url: str = "https://api.openai.com/v1"
+    ai_base_url: Optional[str] = None  # Optional: custom base URL for OpenAI-compatible APIs
     
     # Application Settings
     log_level: str = "INFO"

@@ -57,7 +57,35 @@ async def github_webhook(
             await process_pull_request(payload)
             return {"status": "processing"}
     
+    # Handle issue comment events (includes PR comments)
+    elif x_github_event == "issue_comment":
+        action = payload.get("action")
+        
+        # Process when comment is created
+        if action == "created":
+            comment_body = payload.get("comment", {}).get("body", "").strip()
+            
+            # Check if comment contains /review command
+            if comment_body.startswith("/review"):
+                # Verify it's a pull request comment
+                if "pull_request" in payload.get("issue", {}):
+                    await process_review_command(payload)
+                    return {"status": "processing"}
+    
     return {"status": "ignored"}
+
+
+async def process_review_command(payload: dict):
+    """Process a /review command from a PR comment."""
+    
+    issue = payload["issue"]
+    pr_number = issue["number"]
+    repo_full_name = payload["repository"]["full_name"]
+    owner, repo = repo_full_name.split("/")
+    
+    logger.info(f"Processing /review command for PR #{pr_number} in {repo_full_name}")
+    
+    await process_pull_request_review(owner, repo, pr_number)
 
 
 async def process_pull_request(payload: dict):
@@ -68,6 +96,12 @@ async def process_pull_request(payload: dict):
     owner, repo = repo_full_name.split("/")
     
     logger.info(f"Processing PR #{pr_number} in {repo_full_name}")
+    
+    await process_pull_request_review(owner, repo, pr_number)
+
+
+async def process_pull_request_review(owner: str, repo: str, pr_number: int):
+    """Perform AI code review on a pull request."""
     
     try:
         # Get PR diff

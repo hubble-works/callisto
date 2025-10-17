@@ -1,6 +1,6 @@
-import httpx
 import logging
-from typing import List
+from typing import List, Optional
+from openai import AsyncOpenAI
 from app.models.schemas import ReviewComment
 
 logger = logging.getLogger(__name__)
@@ -9,14 +9,15 @@ logger = logging.getLogger(__name__)
 class AIService:
     """Service for AI-based code review."""
     
-    def __init__(self, api_key: str, model: str, base_url: str):
-        self.api_key = api_key
+    def __init__(self, api_key: str, model: str, base_url: Optional[str] = None):
         self.model = model
-        self.base_url = base_url
-        self.headers = {
-            "Authorization": f"Bearer {api_key}",
-            "Content-Type": "application/json"
-        }
+        
+        # Initialize OpenAI client with optional custom base URL
+        client_kwargs = {"api_key": api_key}
+        if base_url:
+            client_kwargs["base_url"] = base_url
+        
+        self.client = AsyncOpenAI(**client_kwargs)
     
     async def review_code(
         self,
@@ -69,29 +70,22 @@ Diff:
 Provide your review as a JSON array."""
 
         try:
-            async with httpx.AsyncClient(timeout=60.0) as client:
-                response = await client.post(
-                    f"{self.base_url}/chat/completions",
-                    headers=self.headers,
-                    json={
-                        "model": self.model,
-                        "messages": [
-                            {"role": "system", "content": system_prompt},
-                            {"role": "user", "content": user_prompt}
-                        ],
-                        "temperature": 0.3,
-                        "max_tokens": 2000
-                    }
-                )
-                response.raise_for_status()
-                result = response.json()
-                
-                # Parse AI response
-                ai_response = result["choices"][0]["message"]["content"]
-                comments = self._parse_ai_response(ai_response, filename)
-                
-                logger.info(f"AI reviewed {filename}: found {len(comments)} issues")
-                return comments
+            response = await self.client.chat.completions.create(
+                model=self.model,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt}
+                ],
+                temperature=0.3,
+                max_tokens=2000
+            )
+            
+            # Parse AI response
+            ai_response = response.choices[0].message.content
+            comments = self._parse_ai_response(ai_response, filename)
+            
+            logger.info(f"AI reviewed {filename}: found {len(comments)} issues")
+            return comments
                 
         except Exception as e:
             logger.error(f"Error during AI review: {str(e)}", exc_info=True)
