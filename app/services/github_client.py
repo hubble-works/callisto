@@ -8,6 +8,7 @@ logger = logging.getLogger(__name__)
 
 class PullRequestEvent(BaseModel):
     """GitHub Pull Request webhook event."""
+
     action: str
     number: int
     pull_request: Dict[str, Any]
@@ -16,6 +17,7 @@ class PullRequestEvent(BaseModel):
 
 class ReviewComment(BaseModel):
     """A review comment to post on a pull request."""
+
     path: str
     position: Optional[int] = None
     body: str

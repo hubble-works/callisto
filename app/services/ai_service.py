@@ -8,6 +8,7 @@ logger = logging.getLogger(__name__)
 
 class ReviewComment(BaseModel):
     """A review comment to post on a pull request."""
+
     path: str
     position: Optional[int] = None
     body: str
@@ -46,11 +47,10 @@ class AIService:
         self.model = model
 
         # Initialize OpenAI client with optional custom base URL
-        client_kwargs = {"api_key": api_key}
         if base_url:
-            client_kwargs["base_url"] = base_url
-
-        self.client = AsyncOpenAI(**client_kwargs)
+            self.client = AsyncOpenAI(api_key=api_key, base_url=base_url)
+        else:
+            self.client = AsyncOpenAI(api_key=api_key)
 
     async def review_pull_request(
         self, files_with_diffs: List[FileDiff], context: str = ""
