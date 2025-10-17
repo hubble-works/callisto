@@ -10,7 +10,7 @@ class Settings(BaseSettings):
         case_sensitive=False,
         extra="ignore"
     )
-    
+
     # GitHub Configuration
     github_token: str = ""
     github_webhook_secret: str = ""
@@ -24,5 +24,3 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
     environment: str = "development"
 
-
-settings = Settings()

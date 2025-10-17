@@ -1,13 +1,42 @@
 import httpx
 import logging
-from typing import List, Optional
-from app.models.schemas import CodeDiff, ReviewComment
+from typing import List, Optional, Dict, Any
+from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
 
 
-class GitHubService:
-    """Service for interacting with GitHub API."""
+class PullRequestEvent(BaseModel):
+    """GitHub Pull Request webhook event."""
+    action: str
+    number: int
+    pull_request: Dict[str, Any]
+    repository: Dict[str, Any]
+
+
+class ReviewComment(BaseModel):
+    """A review comment to post on a pull request."""
+    path: str
+    position: Optional[int] = None
+    body: str
+    line: Optional[int] = None
+    side: str = "RIGHT"  # LEFT or RIGHT
+    start_line: Optional[int] = None
+    start_side: Optional[str] = None
+
+
+class CodeDiff(BaseModel):
+    """Represents a code diff."""
+    filename: str
+    status: str  # added, removed, modified
+    additions: int
+    deletions: int
+    changes: int
+    patch: Optional[str] = None
+
+
+class GitHubClient:
+    """Client for interacting with GitHub API."""
     
     def __init__(self, token: str):
         self.token = token
@@ -65,36 +94,6 @@ class GitHubService:
             "event": event,
             "comments": formatted_comments
         }
-        
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
-                url,
-                headers=self.headers,
-                json=payload
-            )
-            response.raise_for_status()
-            return response.json()
-    
-    async def get_pr_details(self, owner: str, repo: str, pr_number: int) -> dict:
-        """Get pull request details."""
-        url = f"{self.base_url}/repos/{owner}/{repo}/pulls/{pr_number}"
-        
-        async with httpx.AsyncClient() as client:
-            response = await client.get(url, headers=self.headers)
-            response.raise_for_status()
-            return response.json()
-    
-    async def post_comment(
-        self,
-        owner: str,
-        repo: str,
-        pr_number: int,
-        body: str
-    ):
-        """Post a general comment on a pull request."""
-        url = f"{self.base_url}/repos/{owner}/{repo}/issues/{pr_number}/comments"
-        
-        payload = {"body": body}
         
         async with httpx.AsyncClient() as client:
             response = await client.post(

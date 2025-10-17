@@ -16,7 +16,6 @@
 - `app/services/`: Core business logic:
     - `ai_service.py`: Handles AI model calls and code analysis.
     - `github_service.py`: Manages GitHub API interactions.
-- `app/models/`: Pydantic schemas and data models for requests/responses.
 - `app/config.py`: Loads environment/configuration variables.
 - `tests/`: Pytest-based test suite for all major components.
 
@@ -30,7 +29,7 @@
 
 ## Patterns & Conventions
 - **Async-first:** All service and API logic uses async/await for concurrency.
-- **Separation of concerns:** API, business logic, and models are strictly separated by directory.
+- **Separation of concerns:** API, service layer, dao and config are clearly separated.
 - **Configuration:** Use `app/config.py` and environment variables for all secrets and settings.
 - **Testing:** Place tests in `tests/` with filenames like `test_*.py`.
 - **No hardcoded secrets:** All tokens/keys must come from environment/config.

@@ -1,18 +1,16 @@
-from fastapi import APIRouter, Request, HTTPException, Header
+from fastapi import APIRouter, Request, HTTPException, Header, Depends
 from typing import Optional
 import hmac
 import hashlib
 import logging
 
-from app.services.github_service import GitHubService
-from app.services.ai_service import AIService
-from app.config import settings
+from app.services.github_client import GitHubClient
+from app.services.ai_service import AIService, FileDiff
+from app.dependencies import get_github_client, get_ai_service, get_settings
+from app.config import Settings
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
-
-github_service = GitHubService(settings.github_token)
-ai_service = AIService(settings.ai_api_key, settings.ai_model, settings.ai_base_url)
 
 
 def verify_signature(payload: bytes, signature: str, secret: str) -> bool:
@@ -31,7 +29,10 @@ def verify_signature(payload: bytes, signature: str, secret: str) -> bool:
 async def github_webhook(
     request: Request,
     x_hub_signature_256: Optional[str] = Header(None),
-    x_github_event: Optional[str] = Header(None)
+    x_github_event: Optional[str] = Header(None),
+    github_client: GitHubClient = Depends(get_github_client),
+    ai_service: AIService = Depends(get_ai_service),
+    settings: Settings = Depends(get_settings)
 ):
     """Handle GitHub webhook events."""
     
@@ -54,7 +55,7 @@ async def github_webhook(
         
         # Process PR opened or synchronized (new commits)
         if action in ["opened", "synchronize"]:
-            await process_pull_request(payload)
+            await process_pull_request(payload, github_client, ai_service)
             return {"status": "processing"}
     
     # Handle issue comment events (includes PR comments)
@@ -69,13 +70,17 @@ async def github_webhook(
             if comment_body.startswith("/review"):
                 # Verify it's a pull request comment
                 if "pull_request" in payload.get("issue", {}):
-                    await process_review_command(payload)
+                    await process_review_command(payload, github_client, ai_service)
                     return {"status": "processing"}
     
     return {"status": "ignored"}
 
 
-async def process_review_command(payload: dict):
+async def process_review_command(
+    payload: dict,
+    github_client: GitHubClient,
+    ai_service: AIService
+):
     """Process a /review command from a PR comment."""
     
     issue = payload["issue"]
@@ -85,10 +90,14 @@ async def process_review_command(payload: dict):
     
     logger.info(f"Processing /review command for PR #{pr_number} in {repo_full_name}")
     
-    await process_pull_request_review(owner, repo, pr_number)
+    await process_pull_request_review(owner, repo, pr_number, github_client, ai_service)
 
 
-async def process_pull_request(payload: dict):
+async def process_pull_request(
+    payload: dict,
+    github_client: GitHubClient,
+    ai_service: AIService
+):
     """Process a pull request and perform AI code review."""
     
     pr_number = payload["number"]
@@ -97,33 +106,46 @@ async def process_pull_request(payload: dict):
     
     logger.info(f"Processing PR #{pr_number} in {repo_full_name}")
     
-    await process_pull_request_review(owner, repo, pr_number)
+    await process_pull_request_review(owner, repo, pr_number, github_client, ai_service)
 
 
-async def process_pull_request_review(owner: str, repo: str, pr_number: int):
+async def process_pull_request_review(
+    owner: str,
+    repo: str,
+    pr_number: int,
+    github_client: GitHubClient,
+    ai_service: AIService
+):
     """Perform AI code review on a pull request."""
     
     try:
         # Get PR diff
-        diff_files = await github_service.get_pr_diff(owner, repo, pr_number)
+        diff_files = await github_client.get_pr_diff(owner, repo, pr_number)
         
         if not diff_files:
             logger.info(f"No files to review in PR #{pr_number}")
             return
         
-        # Analyze each file with AI
-        all_comments = []
-        for file in diff_files:
-            if file.patch:
-                comments = await ai_service.review_code(
-                    diff=file.patch,
-                    filename=file.filename
-                )
-                all_comments.extend(comments)
+        # Combine all diffs into a single list
+        files_with_diffs = [
+            FileDiff(name=file.filename, diff=file.patch)
+            for file in diff_files
+            if file.patch
+        ]
+        
+        if not files_with_diffs:
+            logger.info(f"No files with patches to review in PR #{pr_number}")
+            return
+        
+        # Analyze entire PR with AI in a single request
+        all_comments = await ai_service.review_pull_request(
+            files_with_diffs=files_with_diffs,
+            context=f"Pull Request #{pr_number} in {owner}/{repo}"
+        )
         
         # Post review comments
         if all_comments:
-            await github_service.post_review(
+            await github_client.post_review(
                 owner, repo, pr_number, all_comments
             )
             logger.info(f"Posted {len(all_comments)} review comments on PR #{pr_number}")

@@ -80,7 +80,6 @@ Set these environment variables in your `.env` file:
 - `app/main.py`: FastAPI application entry point
 - `app/api/`: API endpoints
 - `app/services/`: Business logic (GitHub integration, AI analysis)
-- `app/models/`: Data models
 - `app/config.py`: Configuration management
 - `tests/`: Test suite
 

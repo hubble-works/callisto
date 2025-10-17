@@ -1,9 +1,39 @@
 import logging
 from typing import List, Optional
 from openai import AsyncOpenAI
-from app.models.schemas import ReviewComment
+from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
+
+
+class ReviewComment(BaseModel):
+    """A review comment to post on a pull request."""
+    path: str
+    position: Optional[int] = None
+    body: str
+    line: Optional[int] = None
+    side: str = "RIGHT"  # LEFT or RIGHT
+    start_line: Optional[int] = None
+    start_side: Optional[str] = None
+
+
+class FileDiff(BaseModel):
+    """Represents a file with its diff for AI review."""
+    name: str
+    diff: str
+
+
+class AIReviewRequest(BaseModel):
+    """Request for AI code review."""
+    diff: str
+    filename: str
+    context: Optional[str] = None
+
+
+class AIReviewResponse(BaseModel):
+    """Response from AI code review."""
+    comments: List[ReviewComment]
+    summary: Optional[str] = None
 
 
 class AIService:
@@ -18,53 +48,61 @@ class AIService:
             client_kwargs["base_url"] = base_url
         
         self.client = AsyncOpenAI(**client_kwargs)
-    
-    async def review_code(
+
+    async def review_pull_request(
         self,
-        diff: str,
-        filename: str,
+        files_with_diffs: List[FileDiff],
         context: str = ""
     ) -> List[ReviewComment]:
         """
-        Review code using AI and return comments.
+        Review entire pull request with all files in a single AI request.
         
         Args:
-            diff: The code diff to review
-            filename: Name of the file being reviewed
-            context: Additional context about the code
+            files_with_diffs: List of FileDiff objects containing file name and diff
+            context: Additional context about the pull request
         
         Returns:
             List of review comments
         """
         
-        system_prompt = """You are an expert code reviewer. Analyze the provided code diff and provide constructive feedback.
+        if not files_with_diffs:
+            return []
+        
+        system_prompt = """You are an expert code reviewer. Analyze the provided pull request diff and provide constructive feedback.
 Focus on:
 - Potential bugs or errors
 - Security vulnerabilities
 - Performance issues
 - Code quality and best practices
 - Maintainability concerns
+- Cross-file dependencies and interactions
 
 For each issue found, provide:
-1. The line number where the issue occurs
-2. A clear description of the issue
-3. A suggestion for improvement
+1. The file path where the issue occurs
+2. The line number where the issue occurs
+3. A clear description of the issue
+4. A suggestion for improvement
 
 Format your response as a JSON array of objects with fields:
+- path: the file path
 - line: the line number in the diff (right side)
 - comment: the review comment
 
 Only report significant issues. Avoid nitpicking on style unless it affects readability or maintainability.
 If the code looks good, return an empty array."""
 
-        user_prompt = f"""Please review this code diff:
+        # Combine all diffs into a single prompt
+        combined_diff = ""
+        for file_diff in files_with_diffs:
+            combined_diff += f"\n\n=== File: {file_diff.name} ===\n{file_diff.diff}"
+        
+        user_prompt = f"""Please review this pull request:
 
-File: {filename}
 {context}
 
-Diff:
+Combined diff of all files:
 ```
-{diff}
+{combined_diff}
 ```
 
 Provide your review as a JSON array."""
@@ -77,21 +115,21 @@ Provide your review as a JSON array."""
                     {"role": "user", "content": user_prompt}
                 ],
                 temperature=0.3,
-                max_tokens=2000
+                max_tokens=4000
             )
             
             # Parse AI response
-            ai_response = response.choices[0].message.content
-            comments = self._parse_ai_response(ai_response, filename)
+            ai_response = response.choices[0].message.content or ""
+            comments = self._parse_ai_response(ai_response)
             
-            logger.info(f"AI reviewed {filename}: found {len(comments)} issues")
+            logger.info(f"AI reviewed PR with {len(files_with_diffs)} files: found {len(comments)} issues")
             return comments
                 
         except Exception as e:
             logger.error(f"Error during AI review: {str(e)}", exc_info=True)
             return []
     
-    def _parse_ai_response(self, response: str, filename: str) -> List[ReviewComment]:
+    def _parse_ai_response(self, response: str) -> List[ReviewComment]:
         """Parse AI response into ReviewComment objects."""
         import json
         
@@ -115,10 +153,10 @@ Provide your review as a JSON array."""
             
             comments = []
             for issue in issues:
-                if isinstance(issue, dict) and "line" in issue and "comment" in issue:
+                if isinstance(issue, dict) and "line" in issue and "comment" in issue and "path" in issue:
                     comments.append(
                         ReviewComment(
-                            path=filename,
+                            path=issue["path"],
                             line=int(issue["line"]),
                             body=issue["comment"],
                             side="RIGHT"
