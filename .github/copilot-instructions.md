@@ -20,11 +20,13 @@
 - `tests/`: Pytest-based test suite for all major components.
 
 ## Developer Workflows
-- **Install dependencies:** `poetry install`
-- **Run server (dev):** `poetry run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000`
-- **Run tests:** `poetry run pytest`
-- **Format code:** `poetry run black app/ tests/`
-- **Lint:** `poetry run flake8 app/ tests/` and `poetry run mypy app/`
+- **Install dependencies:** `make install`
+- **Run server (dev):** `make run` or `make dev`
+- **Run tests:** `make test`
+- **Format code:** `make format`
+- **Check formatting:** `make format-check`
+- **Lint:** `make lint`
+- **Run all CI checks:** `make ci` (runs tests, lint, and format-check)
 - **Environment:** Copy `.env.example` to `.env` and set required secrets (see README for details).
 
 ## Patterns & Conventions
