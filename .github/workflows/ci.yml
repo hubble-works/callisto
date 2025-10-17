@@ -1,0 +1,44 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup Python and Poetry
+      uses: ./.github/actions/setup-python-poetry
+
+    - name: Run tests
+      run: make test
+
+  lint:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup Python and Poetry
+      uses: ./.github/actions/setup-python-poetry
+
+    - name: Run lint
+      run: make lint
+
+  format-check:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup Python and Poetry
+      uses: ./.github/actions/setup-python-poetry
+
+    - name: Check code formatting
+      run: make format-check

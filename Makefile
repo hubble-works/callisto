@@ -1,4 +1,4 @@
-.PHONY: help install run test lint format clean dev
+.PHONY: help install run test lint format format-check ci clean dev
 
 install:
 	poetry install
@@ -17,3 +17,8 @@ lint:
 
 format:
 	poetry run black app/ tests/
+
+format-check:
+	poetry run black --check app/ tests/
+
+ci: test lint format-check

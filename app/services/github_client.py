@@ -8,6 +8,7 @@ logger = logging.getLogger(__name__)
 
 class PullRequestEvent(BaseModel):
     """GitHub Pull Request webhook event."""
+
     action: str
     number: int
     pull_request: Dict[str, Any]
@@ -16,6 +17,7 @@ class PullRequestEvent(BaseModel):
 
 class ReviewComment(BaseModel):
     """A review comment to post on a pull request."""
+
     path: str
     position: Optional[int] = None
     body: str
@@ -27,6 +29,7 @@ class ReviewComment(BaseModel):
 
 class CodeDiff(BaseModel):
     """Represents a code diff."""
+
     filename: str
     status: str  # added, removed, modified
     additions: int
@@ -37,25 +40,25 @@ class CodeDiff(BaseModel):
 
 class GitHubClient:
     """Client for interacting with GitHub API."""
-    
+
     def __init__(self, token: str):
         self.token = token
         self.base_url = "https://api.github.com"
         self.headers = {
             "Authorization": f"Bearer {token}",
             "Accept": "application/vnd.github+json",
-            "X-GitHub-Api-Version": "2022-11-28"
+            "X-GitHub-Api-Version": "2022-11-28",
         }
-    
+
     async def get_pr_diff(self, owner: str, repo: str, pr_number: int) -> List[CodeDiff]:
         """Get the diff files for a pull request."""
         url = f"{self.base_url}/repos/{owner}/{repo}/pulls/{pr_number}/files"
-        
+
         async with httpx.AsyncClient() as client:
             response = await client.get(url, headers=self.headers)
             response.raise_for_status()
             files = response.json()
-            
+
             return [
                 CodeDiff(
                     filename=file["filename"],
@@ -63,43 +66,31 @@ class GitHubClient:
                     additions=file["additions"],
                     deletions=file["deletions"],
                     changes=file["changes"],
-                    patch=file.get("patch")
+                    patch=file.get("patch"),
                 )
                 for file in files
             ]
-    
+
     async def post_review(
         self,
         owner: str,
         repo: str,
         pr_number: int,
         comments: List[ReviewComment],
-        event: str = "COMMENT"
+        event: str = "COMMENT",
     ):
         """Post a review with comments on a pull request."""
         url = f"{self.base_url}/repos/{owner}/{repo}/pulls/{pr_number}/reviews"
-        
+
         # Format comments for GitHub API
         formatted_comments = [
-            {
-                "path": comment.path,
-                "body": comment.body,
-                "line": comment.line,
-                "side": comment.side
-            }
+            {"path": comment.path, "body": comment.body, "line": comment.line, "side": comment.side}
             for comment in comments
         ]
-        
-        payload = {
-            "event": event,
-            "comments": formatted_comments
-        }
-        
+
+        payload = {"event": event, "comments": formatted_comments}
+
         async with httpx.AsyncClient() as client:
-            response = await client.post(
-                url,
-                headers=self.headers,
-                json=payload
-            )
+            response = await client.post(url, headers=self.headers, json=payload)
             response.raise_for_status()
             return response.json()
