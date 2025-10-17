@@ -1,5 +1,4 @@
-from app.services.ai_service import FileDiff, AIReviewRequest, AIReviewResponse
-from app.models import ReviewComment
+from app.services.ai_service import FileDiff, AIReviewRequest, AIReviewResponse, ReviewComment
 
 
 def test_file_diff():

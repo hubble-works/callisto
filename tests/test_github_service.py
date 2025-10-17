@@ -1,5 +1,4 @@
-from app.services.github_client import CodeDiff, PullRequestEvent
-from app.models import ReviewComment
+from app.services.github_client import CodeDiff, PullRequestEvent, ReviewComment
 
 
 def test_code_diff():
