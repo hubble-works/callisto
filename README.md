@@ -90,6 +90,52 @@ Set these environment variables in your `.env` file:
 3. Select events: Pull requests
 4. Set the webhook secret matching your `GITHUB_WEBHOOK_SECRET`
 
+## Docker
+
+### Building Locally
+
+```bash
+docker build -t callisto .
+docker run -p 8000:8000 --env-file .env callisto
+```
+
+### GitHub Container Registry
+
+Docker images are automatically built and published to GitHub Container Registry on pushes to `main` and `develop` branches.
+
+Pull the latest image:
+```bash
+docker pull ghcr.io/hubble-works/callisto:latest
+```
+
+Available tags:
+- `latest`: Latest build from main branch
+- `main`: Latest build from main branch
+- `develop`: Latest build from develop branch
+- `v*`: Semantic version tags (e.g., v1.0.0)
+- `main-<sha>`, `develop-<sha>`: Specific commit builds
+
+Run the container:
+```bash
+docker run -p 8000:8000 --env-file .env ghcr.io/hubble-works/callisto:latest
+```
+
+### Creating a Release
+
+To publish a versioned release:
+
+1. Create and push a tag:
+```bash
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+2. The Docker image will be automatically built and tagged as:
+   - `ghcr.io/hubble-works/callisto:v1.0.0`
+   - `ghcr.io/hubble-works/callisto:1.0.0`
+   - `ghcr.io/hubble-works/callisto:1.0`
+   - `ghcr.io/hubble-works/callisto:1`
+
 ## License
 
 MIT
