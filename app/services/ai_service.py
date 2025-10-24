@@ -1,6 +1,7 @@
 import logging
 from typing import List, Optional
 from openai import AsyncOpenAI
+from openai.types.chat import ChatCompletionSystemMessageParam, ChatCompletionUserMessageParam
 from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
@@ -111,11 +112,19 @@ Combined diff of all files:
 Provide your review as a JSON array."""
 
         try:
+            logger.info(
+                f"Sending combined PR review request to AI for {len(files_with_diffs)} files",
+            )
+            logger.info(
+                "User Prompt: %s",
+                user_prompt[:500] + "..." if len(user_prompt) > 500 else user_prompt,
+            )
+
             response = await self.client.chat.completions.create(
                 model=self.model,
                 messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_prompt},
+                    ChatCompletionSystemMessageParam(content=system_prompt, role="system"),
+                    ChatCompletionUserMessageParam(content=user_prompt, role="user"),
                 ],
                 temperature=0.3,
                 max_tokens=4000,
