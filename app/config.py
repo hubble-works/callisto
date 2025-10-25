@@ -7,8 +7,13 @@ class Settings(BaseSettings):
 
     model_config = SettingsConfigDict(env_file=".env", case_sensitive=False, extra="ignore")
 
-    # GitHub Configuration
-    github_token: str = ""
+    # GitHub Authentication (choose one)
+    github_token: Optional[str] = None  # Personal access token
+    github_app_id: Optional[str] = None  # GitHub App ID
+    github_app_private_key: Optional[str] = None  # GitHub App private key (inline)
+    github_app_private_key_path: Optional[str] = None  # GitHub App private key file path
+
+    # GitHub Webhook Configuration
     github_webhook_secret: str = ""
 
     # AI Configuration

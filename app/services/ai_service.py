@@ -44,10 +44,11 @@ class AIReviewResponse(BaseModel):
 class AIService:
     """Service for AI-based code review."""
 
+    model: str
+    client: AsyncOpenAI
+
     def __init__(self, api_key: str, model: str, base_url: Optional[str] = None):
         self.model = model
-
-        # Initialize OpenAI client with optional custom base URL
         if base_url:
             self.client = AsyncOpenAI(api_key=api_key, base_url=base_url)
         else:

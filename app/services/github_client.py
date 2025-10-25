@@ -1,7 +1,10 @@
-import httpx
 import logging
 from typing import List, Optional, Dict, Any
+
+import httpx
 from pydantic import BaseModel
+
+from app.services.github_auth import GitHubAuthService
 
 logger = logging.getLogger(__name__)
 
@@ -41,35 +44,47 @@ class CodeDiff(BaseModel):
 class GitHubClient:
     """Client for interacting with GitHub API."""
 
-    def __init__(self, token: str):
-        self.token = token
+    base_url: str
+    http_client: httpx.AsyncClient
+    auth_service: GitHubAuthService
+
+    def __init__(
+        self,
+        http_client: httpx.AsyncClient,
+        auth_service: GitHubAuthService,
+    ):
         self.base_url = "https://api.github.com"
-        self.headers = {
-            "Authorization": f"Bearer {token}",
+        self.http_client = http_client
+        self.auth_service = auth_service
+
+    async def _get_headers(self, owner: str, repo: str) -> Dict[str, str]:
+        """Get standard GitHub API headers with authorization."""
+        return {
             "Accept": "application/vnd.github+json",
             "X-GitHub-Api-Version": "2022-11-28",
+            "Authorization": await self.auth_service.get_auth_header(owner, repo),
         }
 
     async def get_pr_diff(self, owner: str, repo: str, pr_number: int) -> List[CodeDiff]:
         """Get the diff files for a pull request."""
         url = f"{self.base_url}/repos/{owner}/{repo}/pulls/{pr_number}/files"
+        headers = await self._get_headers(owner, repo)
 
-        async with httpx.AsyncClient() as client:
-            response = await client.get(url, headers=self.headers)
-            response.raise_for_status()
-            files = response.json()
+        response = await self.http_client.get(url, headers=headers)
+        response.raise_for_status()
+        files = response.json()
 
-            return [
-                CodeDiff(
-                    filename=file["filename"],
-                    status=file["status"],
-                    additions=file["additions"],
-                    deletions=file["deletions"],
-                    changes=file["changes"],
-                    patch=file.get("patch"),
-                )
-                for file in files
-            ]
+        return [
+            CodeDiff(
+                filename=file["filename"],
+                status=file["status"],
+                additions=file["additions"],
+                deletions=file["deletions"],
+                changes=file["changes"],
+                patch=file.get("patch"),
+            )
+            for file in files
+        ]
 
     async def post_review(
         self,
@@ -81,6 +96,7 @@ class GitHubClient:
     ):
         """Post a review with comments on a pull request."""
         url = f"{self.base_url}/repos/{owner}/{repo}/pulls/{pr_number}/reviews"
+        headers = await self._get_headers(owner, repo)
 
         # Format comments for GitHub API
         formatted_comments = [
@@ -90,7 +106,6 @@ class GitHubClient:
 
         payload = {"event": event, "comments": formatted_comments}
 
-        async with httpx.AsyncClient() as client:
-            response = await client.post(url, headers=self.headers, json=payload)
-            response.raise_for_status()
-            return response.json()
+        response = await self.http_client.post(url, headers=headers, json=payload)
+        response.raise_for_status()
+        return response.json()
