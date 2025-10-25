@@ -60,7 +60,9 @@ def test_github_auth_service_initialization_with_personal_token(mock_http_client
     assert auth_service.app_auth_service is None
 
 
-def test_github_auth_service_initialization_with_app_credentials(mock_http_client, mock_credentials):
+def test_github_auth_service_initialization_with_app_credentials(
+    mock_http_client, mock_credentials
+):
     """Test GitHubAuthService initialization with GitHub App credentials."""
     auth_service = GitHubAuthService(
         http_client=mock_http_client,
@@ -73,7 +75,9 @@ def test_github_auth_service_initialization_with_app_credentials(mock_http_clien
 
 def test_github_auth_service_initialization_with_both(mock_http_client, mock_credentials):
     """Test GitHubAuthService initialization fails with both personal token and app credentials."""
-    with pytest.raises(ValueError, match="Provide either personal_token or app_credentials, not both"):
+    with pytest.raises(
+        ValueError, match="Provide either personal_token or app_credentials, not both"
+    ):
         GitHubAuthService(
             http_client=mock_http_client,
             personal_token="ghp_test_token",
@@ -83,7 +87,9 @@ def test_github_auth_service_initialization_with_both(mock_http_client, mock_cre
 
 def test_github_auth_service_initialization_without_credentials(mock_http_client):
     """Test GitHubAuthService initialization fails without any credentials."""
-    with pytest.raises(ValueError, match="Either personal_token or app_credentials must be provided"):
+    with pytest.raises(
+        ValueError, match="Either personal_token or app_credentials must be provided"
+    ):
         GitHubAuthService(http_client=mock_http_client)
 
 
@@ -94,7 +100,7 @@ async def test_get_auth_header_with_personal_token(mock_http_client):
         http_client=mock_http_client,
         personal_token="ghp_test_token",
     )
-    
+
     header = await auth_service.get_auth_header()
     assert header == "Bearer ghp_test_token"
 
@@ -106,7 +112,7 @@ async def test_get_auth_header_with_personal_token_with_repo(mock_http_client):
         http_client=mock_http_client,
         personal_token="ghp_test_token",
     )
-    
+
     header = await auth_service.get_auth_header(owner="owner", repo="repo")
     assert header == "Bearer ghp_test_token"
 
@@ -118,13 +124,15 @@ async def test_get_auth_header_with_app_auth_success(mock_http_client, mock_cred
         http_client=mock_http_client,
         app_credentials=mock_credentials,
     )
-    
+
     # Mock the app auth service get_token_for_repo method
     auth_service.app_auth_service.get_token_for_repo = AsyncMock(return_value="ghs_app_token")
-    
+
     header = await auth_service.get_auth_header(owner="test-owner", repo="test-repo")
     assert header == "Bearer ghs_app_token"
-    auth_service.app_auth_service.get_token_for_repo.assert_called_once_with("test-owner", "test-repo")
+    auth_service.app_auth_service.get_token_for_repo.assert_called_once_with(
+        "test-owner", "test-repo"
+    )
 
 
 @pytest.mark.asyncio
@@ -134,23 +142,27 @@ async def test_get_auth_header_with_app_auth_failure(mock_http_client, mock_cred
         http_client=mock_http_client,
         app_credentials=mock_credentials,
     )
-    
+
     # Mock the app auth service get_token_for_repo method to return None
     auth_service.app_auth_service.get_token_for_repo = AsyncMock(return_value=None)
-    
+
     with pytest.raises(ValueError, match="GitHub App authentication failed"):
         await auth_service.get_auth_header(owner="test-owner", repo="test-repo")
 
 
 @pytest.mark.asyncio
-async def test_get_auth_header_with_app_auth_requires_owner_repo(mock_http_client, mock_credentials):
+async def test_get_auth_header_with_app_auth_requires_owner_repo(
+    mock_http_client, mock_credentials
+):
     """Test get_auth_header requires owner/repo when using GitHub App auth."""
     auth_service = GitHubAuthService(
         http_client=mock_http_client,
         app_credentials=mock_credentials,
     )
-    
-    with pytest.raises(ValueError, match="owner and repo are required for GitHub App authentication"):
+
+    with pytest.raises(
+        ValueError, match="owner and repo are required for GitHub App authentication"
+    ):
         await auth_service.get_auth_header()
 
 
@@ -161,19 +173,22 @@ async def test_get_auth_header_with_app_auth_without_repo(mock_http_client, mock
         http_client=mock_http_client,
         app_credentials=mock_credentials,
     )
-    
-    with pytest.raises(ValueError, match="owner and repo are required for GitHub App authentication"):
+
+    with pytest.raises(
+        ValueError, match="owner and repo are required for GitHub App authentication"
+    ):
         await auth_service.get_auth_header(owner="test-owner")
 
 
 @pytest.mark.asyncio
 async def test_get_auth_header_app_only_without_owner_repo(mock_http_client, mock_credentials):
-    """Test get_auth_header fails when only app credentials available and owner/repo not provided."""
+    """Test get_auth_header fails when only app credentials available and owner/repo not provided"""
     auth_service = GitHubAuthService(
         http_client=mock_http_client,
         app_credentials=mock_credentials,
     )
-    
-    with pytest.raises(ValueError, match="owner and repo are required for GitHub App authentication"):
-        await auth_service.get_auth_header()
 
+    with pytest.raises(
+        ValueError, match="owner and repo are required for GitHub App authentication"
+    ):
+        await auth_service.get_auth_header()
