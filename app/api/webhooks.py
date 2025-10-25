@@ -51,7 +51,6 @@ async def github_webhook(
     action = payload.get("action", "")
 
     logger.info(f"Received GitHub event: {x_github_event}.{action}")
-    logger.debug(f"Request body:\n{json.dumps(payload, indent=2)}")
 
     # Handle pull request events
     if x_github_event == "pull_request":
