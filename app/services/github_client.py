@@ -57,14 +57,18 @@ class GitHubClient:
         self.http_client = http_client
         self.auth_service = auth_service
 
-    async def get_pr_diff(self, owner: str, repo: str, pr_number: int) -> List[CodeDiff]:
-        """Get the diff files for a pull request."""
-        url = f"{self.base_url}/repos/{owner}/{repo}/pulls/{pr_number}/files"
-        headers = {
+    async def _get_headers(self, owner: str, repo: str) -> Dict[str, str]:
+        """Get standard GitHub API headers with authorization."""
+        return {
             "Accept": "application/vnd.github+json",
             "X-GitHub-Api-Version": "2022-11-28",
             "Authorization": await self.auth_service.get_auth_header(owner, repo),
         }
+
+    async def get_pr_diff(self, owner: str, repo: str, pr_number: int) -> List[CodeDiff]:
+        """Get the diff files for a pull request."""
+        url = f"{self.base_url}/repos/{owner}/{repo}/pulls/{pr_number}/files"
+        headers = await self._get_headers(owner, repo)
 
         response = await self.http_client.get(url, headers=headers)
         response.raise_for_status()
@@ -92,11 +96,7 @@ class GitHubClient:
     ):
         """Post a review with comments on a pull request."""
         url = f"{self.base_url}/repos/{owner}/{repo}/pulls/{pr_number}/reviews"
-        headers = {
-            "Accept": "application/vnd.github+json",
-            "X-GitHub-Api-Version": "2022-11-28",
-            "Authorization": await self.auth_service.get_auth_header(owner, repo),
-        }
+        headers = await self._get_headers(owner, repo)
 
         # Format comments for GitHub API
         formatted_comments = [
