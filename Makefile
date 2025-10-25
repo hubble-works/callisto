@@ -1,4 +1,4 @@
-.PHONY: help install run test lint format format-check ci clean dev
+.PHONY: help install run test lint fmt format format-check ci clean dev ngrok
 
 install:
 	poetry install
@@ -8,12 +8,17 @@ run:
 
 dev: run
 
+ngrok:
+	ngrok http 8000
+
 test:
 	poetry run pytest -v
 
 lint:
 	poetry run flake8 app/ tests/
 	poetry run mypy app/
+
+fmt: format
 
 format:
 	poetry run black app/ tests/
