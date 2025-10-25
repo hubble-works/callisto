@@ -4,7 +4,7 @@ from typing import List, Optional, Dict, Any
 import httpx
 from pydantic import BaseModel
 
-from app.services.github_app_auth import GitHubAppAuth
+from app.services.github_auth import GitHubAuthService
 
 logger = logging.getLogger(__name__)
 
@@ -45,66 +45,42 @@ class GitHubClient:
     """Client for interacting with GitHub API."""
 
     base_url: str
-    token: Optional[str]
-    app_auth: Optional[GitHubAppAuth]
+    http_client: httpx.AsyncClient
+    auth_service: GitHubAuthService
 
-    def __init__(self, token: Optional[str] = None, app_auth: Optional[GitHubAppAuth] = None):
-        if not token and not app_auth:
-            raise ValueError("Either token or app_auth must be provided")
-
+    def __init__(
+        self,
+        http_client: httpx.AsyncClient,
+        auth_service: GitHubAuthService,
+    ):
         self.base_url = "https://api.github.com"
-        self.token = token
-        self.app_auth = app_auth
-
-    async def _get_headers(
-        self, owner: Optional[str] = None, repo: Optional[str] = None
-    ) -> Dict[str, str]:
-        """Get headers with appropriate authorization."""
-        headers = {
-            "Accept": "application/vnd.github+json",
-            "X-GitHub-Api-Version": "2022-11-28",
-        }
-
-        if self.app_auth and owner and repo:
-            # Use GitHub App authentication
-            token = await self.app_auth.get_token_for_repo(owner, repo)
-            if not token:
-                raise ValueError(
-                    f"GitHub App authentication failed for {owner}/{repo}. "
-                    "Check app installation and permissions."
-                )
-            headers["Authorization"] = f"Bearer {token}"
-            return headers
-
-        # Fall back to personal access token
-        if self.token:
-            headers["Authorization"] = f"Bearer {self.token}"
-        else:
-            raise ValueError("No valid authentication method available")
-
-        return headers
+        self.http_client = http_client
+        self.auth_service = auth_service
 
     async def get_pr_diff(self, owner: str, repo: str, pr_number: int) -> List[CodeDiff]:
         """Get the diff files for a pull request."""
         url = f"{self.base_url}/repos/{owner}/{repo}/pulls/{pr_number}/files"
-        headers = await self._get_headers(owner, repo)
+        headers = {
+            "Accept": "application/vnd.github+json",
+            "X-GitHub-Api-Version": "2022-11-28",
+            "Authorization": await self.auth_service.get_auth_header(owner, repo),
+        }
 
-        async with httpx.AsyncClient() as client:
-            response = await client.get(url, headers=headers)
-            response.raise_for_status()
-            files = response.json()
+        response = await self.http_client.get(url, headers=headers)
+        response.raise_for_status()
+        files = response.json()
 
-            return [
-                CodeDiff(
-                    filename=file["filename"],
-                    status=file["status"],
-                    additions=file["additions"],
-                    deletions=file["deletions"],
-                    changes=file["changes"],
-                    patch=file.get("patch"),
-                )
-                for file in files
-            ]
+        return [
+            CodeDiff(
+                filename=file["filename"],
+                status=file["status"],
+                additions=file["additions"],
+                deletions=file["deletions"],
+                changes=file["changes"],
+                patch=file.get("patch"),
+            )
+            for file in files
+        ]
 
     async def post_review(
         self,
@@ -116,7 +92,11 @@ class GitHubClient:
     ):
         """Post a review with comments on a pull request."""
         url = f"{self.base_url}/repos/{owner}/{repo}/pulls/{pr_number}/reviews"
-        headers = await self._get_headers(owner, repo)
+        headers = {
+            "Accept": "application/vnd.github+json",
+            "X-GitHub-Api-Version": "2022-11-28",
+            "Authorization": await self.auth_service.get_auth_header(owner, repo),
+        }
 
         # Format comments for GitHub API
         formatted_comments = [
@@ -126,7 +106,6 @@ class GitHubClient:
 
         payload = {"event": event, "comments": formatted_comments}
 
-        async with httpx.AsyncClient() as client:
-            response = await client.post(url, headers=headers, json=payload)
-            response.raise_for_status()
-            return response.json()
+        response = await self.http_client.post(url, headers=headers, json=payload)
+        response.raise_for_status()
+        return response.json()

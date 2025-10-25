@@ -1,7 +1,8 @@
 import pytest
 import time
+import httpx
 from unittest.mock import AsyncMock, patch, MagicMock
-from app.services.github_app_auth import GitHubAppAuth
+from app.services.github_app_auth import GitHubAppCredentials, GitHubAppAuthService
 
 
 @pytest.fixture
@@ -38,43 +39,60 @@ ML4epSb9IvX5lG17pL4P3p4=
 
 
 @pytest.fixture
-def github_app_auth(mock_private_key):
-    """Create a GitHubAppAuth instance for testing."""
-    return GitHubAppAuth(app_id="123456", private_key=mock_private_key)
+def mock_credentials(mock_private_key):
+    """Create GitHubAppCredentials for testing."""
+    return GitHubAppCredentials(app_id="123456", private_key=mock_private_key)
 
 
-def test_github_app_auth_initialization(mock_private_key):
-    """Test GitHubAppAuth initialization."""
-    auth = GitHubAppAuth(app_id="123456", private_key=mock_private_key)
-    assert auth.app_id == "123456"
-    assert auth.private_key == mock_private_key
-    assert auth._installation_tokens == {}
+@pytest.fixture
+def mock_http_client():
+    """Create a mock HTTP client."""
+    return MagicMock(spec=httpx.AsyncClient)
 
 
-def test_generate_jwt(github_app_auth):
+@pytest.fixture
+def github_app_auth_service(mock_credentials, mock_http_client):
+    """Create a GitHubAppAuthService instance for testing."""
+    return GitHubAppAuthService(mock_credentials, mock_http_client)
+
+
+def test_github_app_credentials_initialization(mock_private_key):
+    """Test GitHubAppCredentials initialization."""
+    credentials = GitHubAppCredentials(app_id="123456", private_key=mock_private_key)
+    assert credentials.app_id == "123456"
+    assert credentials.private_key == mock_private_key
+
+
+def test_github_app_auth_service_initialization(mock_credentials, mock_http_client):
+    """Test GitHubAppAuthService initialization."""
+    auth_service = GitHubAppAuthService(mock_credentials, mock_http_client)
+    assert auth_service.credentials == mock_credentials
+    assert auth_service.http_client == mock_http_client
+    assert auth_service._installation_tokens == {}
+
+
+def test_generate_jwt(github_app_auth_service):
     """Test JWT generation."""
     with patch("time.time", return_value=1000):
-        jwt_token = github_app_auth.generate_jwt()
+        jwt_token = github_app_auth_service.generate_jwt()
         assert jwt_token is not None
         assert isinstance(jwt_token, str)
 
 
 @pytest.mark.asyncio
-async def test_get_installation_id_success(github_app_auth):
+async def test_get_installation_id_success(github_app_auth_service, mock_http_client):
     """Test successful retrieval of installation ID."""
     mock_response = MagicMock()
     mock_response.json.return_value = {"id": 12345678}
     mock_response.raise_for_status = MagicMock()
+    mock_http_client.get = AsyncMock(return_value=mock_response)
 
-    with patch("httpx.AsyncClient") as mock_client:
-        mock_client.return_value.__aenter__.return_value.get = AsyncMock(return_value=mock_response)
-
-        installation_id = await github_app_auth.get_installation_id("owner", "repo")
-        assert installation_id == 12345678
+    installation_id = await github_app_auth_service.get_installation_id("owner", "repo")
+    assert installation_id == 12345678
 
 
 @pytest.mark.asyncio
-async def test_get_installation_id_failure(github_app_auth):
+async def test_get_installation_id_failure(github_app_auth_service, mock_http_client):
     """Test failed retrieval of installation ID."""
     from httpx import HTTPStatusError, Response, Request
 
@@ -84,15 +102,14 @@ async def test_get_installation_id_failure(github_app_auth):
     async def mock_get(*args, **kwargs):
         raise HTTPStatusError("Not Found", request=mock_request, response=mock_response)
 
-    with patch("httpx.AsyncClient") as mock_client:
-        mock_client.return_value.__aenter__.return_value.get = mock_get
+    mock_http_client.get = mock_get
 
-        installation_id = await github_app_auth.get_installation_id("owner", "repo")
-        assert installation_id is None
+    installation_id = await github_app_auth_service.get_installation_id("owner", "repo")
+    assert installation_id is None
 
 
 @pytest.mark.asyncio
-async def test_get_installation_access_token_success(github_app_auth):
+async def test_get_installation_access_token_success(github_app_auth_service, mock_http_client):
     """Test successful retrieval of installation access token."""
     mock_response = MagicMock()
     mock_response.json.return_value = {
@@ -100,35 +117,31 @@ async def test_get_installation_access_token_success(github_app_auth):
         "expires_at": "2025-10-25T18:00:00Z",
     }
     mock_response.raise_for_status = MagicMock()
+    mock_http_client.post = AsyncMock(return_value=mock_response)
 
-    with patch("httpx.AsyncClient") as mock_client:
-        mock_client.return_value.__aenter__.return_value.post = AsyncMock(
-            return_value=mock_response
-        )
-
-        token = await github_app_auth.get_installation_access_token(12345678)
-        assert token == "ghs_test_token"
-        # Verify token is cached
-        assert 12345678 in github_app_auth._installation_tokens
+    token = await github_app_auth_service.get_installation_access_token(12345678)
+    assert token == "ghs_test_token"
+    # Verify token is cached
+    assert 12345678 in github_app_auth_service._installation_tokens
 
 
 @pytest.mark.asyncio
-async def test_get_installation_access_token_cached(github_app_auth):
+async def test_get_installation_access_token_cached(github_app_auth_service):
     """Test that cached tokens are reused."""
     # Pre-populate cache with a valid token
     future_expiry = time.time() + 3600  # 1 hour from now
-    github_app_auth._installation_tokens[12345678] = {
+    github_app_auth_service._installation_tokens[12345678] = {
         "token": "cached_token",
         "expires_at": future_expiry,
     }
 
     # Should return cached token without making HTTP request
-    token = await github_app_auth.get_installation_access_token(12345678)
+    token = await github_app_auth_service.get_installation_access_token(12345678)
     assert token == "cached_token"
 
 
 @pytest.mark.asyncio
-async def test_get_token_for_repo_success(github_app_auth):
+async def test_get_token_for_repo_success(github_app_auth_service, mock_http_client):
     """Test successful retrieval of token for a repository."""
     mock_installation_response = MagicMock()
     mock_installation_response.json.return_value = {"id": 12345678}
@@ -141,17 +154,15 @@ async def test_get_token_for_repo_success(github_app_auth):
     }
     mock_token_response.raise_for_status = MagicMock()
 
-    with patch("httpx.AsyncClient") as mock_client:
-        mock_async_client = mock_client.return_value.__aenter__.return_value
-        mock_async_client.get = AsyncMock(return_value=mock_installation_response)
-        mock_async_client.post = AsyncMock(return_value=mock_token_response)
+    mock_http_client.get = AsyncMock(return_value=mock_installation_response)
+    mock_http_client.post = AsyncMock(return_value=mock_token_response)
 
-        token = await github_app_auth.get_token_for_repo("owner", "repo")
-        assert token == "ghs_test_token"
+    token = await github_app_auth_service.get_token_for_repo("owner", "repo")
+    assert token == "ghs_test_token"
 
 
 @pytest.mark.asyncio
-async def test_get_token_for_repo_no_installation(github_app_auth):
+async def test_get_token_for_repo_no_installation(github_app_auth_service, mock_http_client):
     """Test token retrieval when installation is not found."""
     from httpx import HTTPStatusError, Response, Request
 
@@ -161,8 +172,7 @@ async def test_get_token_for_repo_no_installation(github_app_auth):
     async def mock_get(*args, **kwargs):
         raise HTTPStatusError("Not Found", request=mock_request, response=mock_response)
 
-    with patch("httpx.AsyncClient") as mock_client:
-        mock_client.return_value.__aenter__.return_value.get = mock_get
+    mock_http_client.get = mock_get
 
-        token = await github_app_auth.get_token_for_repo("owner", "repo")
-        assert token is None
+    token = await github_app_auth_service.get_token_for_repo("owner", "repo")
+    assert token is None
