@@ -47,14 +47,13 @@ async def github_webhook(
 
     # Parse JSON payload
     payload = await request.json()
+    action = payload.get("action")
 
-    logger.info(f"Received GitHub event: {x_github_event}")
+    logger.info(f"Received GitHub event: {x_github_event}.{action}")
     logger.debug(f"Request body: {payload}")
 
     # Handle pull request events
     if x_github_event == "pull_request":
-        action = payload.get("action")
-
         # Process PR opened or synchronized (new commits)
         if action in ["opened", "synchronize"]:
             await process_pull_request(payload, github_client, ai_service)
@@ -62,8 +61,6 @@ async def github_webhook(
 
     # Handle issue comment events (includes PR comments)
     elif x_github_event == "issue_comment":
-        action = payload.get("action")
-
         # Process when comment is created
         if action == "created":
             comment_body = payload.get("comment", {}).get("body", "").strip()
