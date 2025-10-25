@@ -68,12 +68,13 @@ class GitHubClient:
         if self.app_auth and owner and repo:
             # Use GitHub App authentication
             token = await self.app_auth.get_token_for_repo(owner, repo)
-            if token:
-                headers["Authorization"] = f"Bearer {token}"
-                return headers
-            logger.warning(
-                f"Failed to get GitHub App token for {owner}/{repo}, falling back to personal token"
-            )
+            if not token:
+                raise ValueError(
+                    f"GitHub App authentication failed for {owner}/{repo}. "
+                    "Check app installation and permissions."
+                )
+            headers["Authorization"] = f"Bearer {token}"
+            return headers
 
         # Fall back to personal access token
         if self.token:
