@@ -6,6 +6,8 @@
 version: 2
 updates:
   - package-ecosystem: "pip" # See documentation for possible values
+    assignees:
+      - igor-vovk
     directory: "/" # Location of package manifests
     schedule:
       interval: "weekly"
