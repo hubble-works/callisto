@@ -1,53 +1,46 @@
 # Copilot Instructions for AI Agents
 
 ## Project Overview
-- **Purpose:** AI-powered GitHub bot for automated code review.
-- **Key Flows:**
-  - Receives GitHub webhook events (pull requests) at `/webhooks/github` (see `app/api/webhooks.py`).
-  - Analyzes code diffs with AI (see `app/services/ai_service.py`).
-  - Posts review comments to GitHub (see `app/services/github_service.py`).
-
-## Specific Instructions
-- Use classes instead of dicts for data models where appropriate.
+- **Purpose:** AI-powered GitHub agent for automated code review analyzing pull request diffs.
+- **Data Flow:** GitHub webhook → FastAPI endpoint → AI analysis → GitHub review comments
+- **Core Pattern:** Use Pydantic models for all data structures; async/await throughout; dependency injection for services
 
 ## Architecture
-- `app/main.py`: FastAPI app entry point; configures API routes and app startup.
-- `app/api/`: API endpoints, especially `webhooks.py` for GitHub integration.
-- `app/services/`: Core business logic:
-    - `ai_service.py`: Handles AI model calls and code analysis.
-    - `github_service.py`: Manages GitHub API interactions.
-- `app/config.py`: Loads environment/configuration variables.
-- `tests/`: Pytest-based test suite for all major components.
+- `app/main.py`: FastAPI app entry point; includes webhook router at `/webhooks` prefix
+- `app/api/webhooks.py`: Single webhook handler for GitHub events (PR opened/sync, `/review` commands)
+- `app/services/`:
+  - `ai_service.py`: OpenAI client with combined PR analysis (not per-file)
+  - `github_client.py`: GitHub API client for diff retrieval and review posting
+- `app/config.py`: Pydantic settings with `.env` loading
+- `app/dependencies.py`: Singleton services via `@lru_cache()` decorators
+
+## Key Patterns & Conventions
+- **Data Models:** Use Pydantic BaseModel classes (not dicts) - see `ReviewComment`, `FileDiff`, `CodeDiff`
+- **Async Everything:** All API endpoints and service methods are async
+- **Service Singletons:** Services injected via `Depends()` with cached constructors in `dependencies.py`
+- **Error Handling:** Log with context and re-raise - see webhook error handling pattern
+- **Configuration:** All secrets via environment variables in `Settings` class
 
 ## Developer Workflows
-- **Install dependencies:** `make install`
-- **Run server (dev):** `make run` or `make dev`
-- **Run tests:** `make test`
-- **Format code:** `make format`
-- **Check formatting:** `make format-check`
-- **Lint:** `make lint`
-- **Run all CI checks:** `make ci` (runs tests, lint, and format-check)
-- **Environment:** Copy `.env.example` to `.env` and set required secrets (see README for details).
+- **Poetry-based:** Use `poetry install` and `poetry run` for dependency management
+- **Make targets:** `make run` (dev server), `make test` (pytest), `make format` (black), `make lint` (flake8+mypy), `make ci` (all checks)
+- **Testing:** Schema-only tests in `tests/test_*.py` - no mocking/integration tests currently
+- **Environment:** Copy `.env.example` to `.env` with `GITHUB_TOKEN`, `AI_API_KEY`, etc.
 
-## Patterns & Conventions
-- **Async-first:** All service and API logic uses async/await for concurrency.
-- **Separation of concerns:** API, service layer, dao and config are clearly separated.
-- **Configuration:** Use `app/config.py` and environment variables for all secrets and settings.
-- **Testing:** Place tests in `tests/` with filenames like `test_*.py`.
-- **No hardcoded secrets:** All tokens/keys must come from environment/config.
+## Critical Implementation Details
+- **Webhook Processing:** Validates GitHub signature, handles PR events and `/review` commands
+- **AI Review Strategy:** Combines all file diffs into single AI request (not per-file) for better context
+- **Line Mapping:** AI returns line numbers for "RIGHT" side of diff; GitHub API posts at specific lines
+- **Response Parsing:** AI returns JSON array; robust parsing handles markdown code blocks
+- **OpenAI Compatibility:** Supports custom `base_url` for Azure OpenAI, LocalAI, etc.
 
-## Integration Points
-- **GitHub:** Webhook endpoint (`/webhooks/github`), GitHub API via `github_service.py`.
-- **AI Service:** Model calls abstracted in `ai_service.py`; model and key set via env/config.
+## Common Extension Points
+- **New Webhook Events:** Add handlers in `github_webhook()` function checking `x_github_event`
+- **AI Providers:** Modify `AIService.__init__()` to support different clients while keeping same interface
+- **Review Filters:** Extend file filtering logic in `process_pull_request_review()`
+- **Comment Formatting:** Customize AI system prompt in `review_pull_request()` method
 
-## Examples
-- To add a new webhook handler, extend `app/api/webhooks.py` and register the route in `main.py`.
-- To add a new AI model, update `ai_service.py` to support the new provider/model, and add config keys as needed.
-
-## References
-- See `README.md` for setup, environment, and workflow details.
-- Key files: `app/main.py`, `app/api/webhooks.py`, `app/services/ai_service.py`, `app/services/github_service.py`, `app/config.py`.
-
----
-
-If any conventions or flows are unclear, ask for clarification or check the README for up-to-date instructions.
+## Key Files to Understand
+- `app/api/webhooks.py`: Lines 50-80 show webhook signature validation pattern
+- `app/services/ai_service.py`: Lines 72-98 show combined diff strategy and JSON parsing
+- `app/services/github_client.py`: Lines 51-75 show GitHub API pagination and diff retrieval
