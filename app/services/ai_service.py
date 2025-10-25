@@ -86,7 +86,6 @@ Focus on:
 IMPORTANT: The diffs are augmented with line numbers at the beginning of each line.
 The format is "LINE_NUMBER: " followed by the diff content (e.g., "42: +    new code").
 When reporting issues, use the line number shown at the start of the line.
-Deleted lines are marked with "-: " and do not have line numbers in the new file.
 
 For each issue found, provide:
 1. The file path where the issue occurs

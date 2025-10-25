@@ -26,9 +26,9 @@ def augment_diff_with_line_numbers(diff: str) -> str:
         Output:
             @@ -10,5 +10,6 @@ def example():
             10:     def hello():
-            -:    -    print("old")
-            11:    +    print("new")
-            12:    +    return True
+            -    print("old")
+            11: +    print("new")
+            12: +    return True
             13:
     """
     lines = diff.split("\n")
@@ -55,8 +55,8 @@ def augment_diff_with_line_numbers(diff: str) -> str:
             # Diff metadata - keep as is
             augmented_lines.append(line)
         elif line.startswith("-"):
-            # Deleted line - no line number in new file
-            augmented_lines.append(f"-: {line}")
+            # Deleted line - keep as is
+            augmented_lines.append(line)
         elif line.startswith("+"):
             # Added line - has line number in new file
             augmented_lines.append(f"{current_right_line}: {line}")

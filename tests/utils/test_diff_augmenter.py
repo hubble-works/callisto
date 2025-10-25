@@ -46,8 +46,8 @@ index 1234567..abcdefg 100644
 +++ b/example.py
 @@ -10,4 +10,2 @@ def example():
 10:      return True
--: -    # Old comment
--: -    print("removed")"""
+-    # Old comment
+-    print("removed")"""
 
         result = augment_diff_with_line_numbers(diff)
         assert result == expected
@@ -71,7 +71,7 @@ index 1234567..abcdefg 100644
 +++ b/example.py
 @@ -10,5 +10,6 @@ def example():
 10:      def hello():
--: -    print("old")
+-    print("old")
 11: +    print("new")
 12: +    return True
 13:      """
@@ -188,7 +188,7 @@ index 1234567..abcdefg 100644
 @@ -100,7 +100,8 @@ def large_function():
 100:      line100
 101:      line101
--: -    old_line102
+-    old_line102
 102: +    new_line102
 103: +    added_line103
 104:      line104
