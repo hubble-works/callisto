@@ -1,4 +1,4 @@
-# AI-Assisted Code Review Bot
+# Callisto – AI-Assisted Code Review for GitHub
 
 A GitHub bot that performs AI-assisted code reviews by analyzing diffs and providing intelligent comments.
 
