@@ -7,7 +7,7 @@ def test_settings_default_values():
     with patch.dict("os.environ", {}, clear=True):
         settings = Settings(_env_file=None)
 
-        assert settings.github_token == ""
+        assert settings.github_token is None
         assert settings.github_webhook_secret == ""
         assert settings.ai_api_key == ""
         assert settings.ai_model == "gpt-4"

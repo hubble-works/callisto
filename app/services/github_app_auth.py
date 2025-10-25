@@ -11,10 +11,14 @@ logger = logging.getLogger(__name__)
 class GitHubAppAuth:
     """Handles GitHub App authentication and installation access tokens."""
 
+    app_id: str
+    private_key: str
+    _installation_tokens: Dict[int, Dict[str, Any]]
+
     def __init__(self, app_id: str, private_key: str):
         self.app_id = app_id
         self.private_key = private_key
-        self._installation_tokens: Dict[int, Dict[str, Any]] = {}
+        self._installation_tokens = {}
 
     @classmethod
     def from_key_path(cls, app_id: str, private_key_path: str) -> "GitHubAppAuth":

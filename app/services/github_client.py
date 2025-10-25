@@ -43,7 +43,8 @@ class CodeDiff(BaseModel):
 
 class GitHubClient:
     """Client for interacting with GitHub API."""
-    base_url: str = "https://api.github.com"
+
+    base_url: str
     token: Optional[str]
     app_auth: Optional[GitHubAppAuth]
 
@@ -51,6 +52,7 @@ class GitHubClient:
         if not token and not app_auth:
             raise ValueError("Either token or app_auth must be provided")
 
+        self.base_url = "https://api.github.com"
         self.token = token
         self.app_auth = app_auth
 
@@ -104,12 +106,12 @@ class GitHubClient:
             ]
 
     async def post_review(
-            self,
-            owner: str,
-            repo: str,
-            pr_number: int,
-            comments: List[ReviewComment],
-            event: str = "COMMENT",
+        self,
+        owner: str,
+        repo: str,
+        pr_number: int,
+        comments: List[ReviewComment],
+        event: str = "COMMENT",
     ):
         """Post a review with comments on a pull request."""
         url = f"{self.base_url}/repos/{owner}/{repo}/pulls/{pr_number}/reviews"
