@@ -4,6 +4,8 @@ from openai import AsyncOpenAI
 from openai.types.chat import ChatCompletionSystemMessageParam, ChatCompletionUserMessageParam
 from pydantic import BaseModel
 
+from app.utils.diff_augmenter import augment_diff_with_line_numbers
+
 logger = logging.getLogger(__name__)
 
 
@@ -81,9 +83,13 @@ Focus on:
 - Maintainability concerns
 - Cross-file dependencies and interactions
 
+IMPORTANT: The diffs are augmented with line numbers at the beginning of each line.
+The format is "LINE_NUMBER: " followed by the diff content (e.g., "42: +    new code").
+When reporting issues, use the line number shown at the start of the line.
+
 For each issue found, provide:
 1. The file path where the issue occurs
-2. The line number where the issue occurs
+2. The line number where the issue occurs (use the number from the augmented diff)
 3. A clear description of the issue
 4. A suggestion for improvement
 
@@ -96,10 +102,11 @@ Only report significant issues. \
 Avoid nitpicking on style unless it affects readability or maintainability.
 If the code looks good, return an empty array."""
 
-        # Combine all diffs into a single prompt
+        # Combine all diffs into a single prompt with line numbers
         combined_diff = ""
         for file_diff in files_with_diffs:
-            combined_diff += f"\n\n=== File: {file_diff.name} ===\n{file_diff.diff}"
+            augmented_diff = augment_diff_with_line_numbers(file_diff.diff)
+            combined_diff += f"\n\n=== File: {file_diff.name} ===\n{augmented_diff}"
 
         user_prompt = f"""Please review this pull request:
 
