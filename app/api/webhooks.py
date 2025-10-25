@@ -47,7 +47,7 @@ async def github_webhook(
 
     # Parse JSON payload
     payload = await request.json()
-    action = payload.get("action")
+    action = payload.get("action", "")
 
     logger.info(f"Received GitHub event: {x_github_event}.{action}")
     logger.debug(f"Request body: {payload}")
