@@ -43,6 +43,8 @@ class AIReviewResponse(BaseModel):
 
 class AIService:
     """Service for AI-based code review."""
+    model: str
+    client: AsyncOpenAI
 
     def __init__(self, api_key: str, model: str, base_url: Optional[str] = None):
         self.model = model

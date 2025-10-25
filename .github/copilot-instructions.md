@@ -44,3 +44,7 @@
 - `app/api/webhooks.py`: Lines 50-80 show webhook signature validation pattern
 - `app/services/ai_service.py`: Lines 72-98 show combined diff strategy and JSON parsing
 - `app/services/github_client.py`: Lines 51-75 show GitHub API pagination and diff retrieval
+
+## Python instructions
+- Use classes instead of dicts for data structures where possible.
+- Define class properties with type hints if they are assigned in the constructor.
