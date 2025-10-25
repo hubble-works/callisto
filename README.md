@@ -1,6 +1,6 @@
 # Callisto – AI-Assisted Code Review for GitHub
 
-A GitHub bot that performs AI-assisted code reviews by analyzing diffs and providing intelligent comments.
+A GitHub agent that performs AI-assisted code reviews by analyzing diffs and providing intelligent comments.
 
 ## Features
 
@@ -12,13 +12,13 @@ A GitHub bot that performs AI-assisted code reviews by analyzing diffs and provi
 
 ## Setup
 
-### Prerequisites
+### GitHub App Installation
 
-- Python 3.11+
-- Poetry (install from https://python-poetry.org/docs/#installation)
-- GitHub account and repository access
+1. Install the Callisto GitHub App on your repository:
+   - Visit https://github.com/apps/callisto-agent
+   - Click "Install" and select the repositories you want to enable code reviews for
 
-### Installation
+### Local Development Installation
 
 1. Install dependencies:
 ```bash
@@ -31,7 +31,7 @@ cp .env.example .env
 # Edit .env with your GitHub token and AI API keys
 ```
 
-### Running the Bot
+### Running the Agent
 
 Start the development server:
 ```bash
