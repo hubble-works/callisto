@@ -1,6 +1,5 @@
 import hashlib
 import hmac
-import json
 import logging
 from typing import Optional
 
