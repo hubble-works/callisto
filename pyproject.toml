@@ -19,7 +19,7 @@ pyjwt = {extras = ["crypto"], version = "^2.10.1"}
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.4.2"
-pytest-asyncio = "^0.23.3"
+pytest-asyncio = "^1.2.0"
 black = "^25.9.0"
 flake8 = "^7.0.0"
 mypy = "^1.8.0"
